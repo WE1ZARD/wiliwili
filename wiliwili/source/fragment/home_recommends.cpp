@@ -30,6 +30,7 @@ public:
             auto& card = r.business_info.archive;
             auto& info = r.business_info;
             auto& mark = r.business_info.business_mark;
+        #if 0
             if (r.business_info.is_ad_video) {
                 // 推广视频
                 item->setCard(card.pic + ImageHelper::h_ext, info.title, card.owner.name, card.pubdate, card.stat.view,
@@ -43,6 +44,9 @@ public:
             item->setCard(r.pic + ImageHelper::h_ext, r.title, r.owner.name, r.pubdate, r.stat.view, r.stat.danmaku,
                           r.duration, r.rcmd_reason.content);
         }
+        #endif
+        item->setCard(r.pic + ImageHelper::h_ext, r.title, r.owner.name, r.pubdate, r.stat.view, r.stat.danmaku,
+                          r.duration, r.rcmd_reason.content); //不管广告
         return item;
     }
 
