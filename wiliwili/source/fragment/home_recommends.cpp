@@ -26,25 +26,27 @@ public:
         RecyclingGridItemVideoCard* item = (RecyclingGridItemVideoCard*)recycler->dequeueReusableCell("Cell");
 
         bilibili::RecommendVideoResult& r = this->recommendList[index];
+        // 跳过广告
         if (r.business_info.is_ad) {
-            auto& card = r.business_info.archive;
-            auto& info = r.business_info;
-            auto& mark = r.business_info.business_mark;
-            
-            if (r.business_info.is_ad_video) {
-                // 推广视频
-                item->setCard(card.pic + ImageHelper::h_ext, info.title, card.owner.name, card.pubdate, card.stat.view,
-                              card.stat.danmaku, card.duration);
-                item->setExtraInfo(mark.img_url, (float)mark.img_width * 0.375f, (float)mark.img_height * 0.375f);
-            } else {
-                // 广告网页
-                item->setCard(info.pic + ImageHelper::h_ext, info.title, info.adver_name, "", "", "", mark.text);
-            }
-        } else {
+        //    auto& card = r.business_info.archive;
+        //    auto& info = r.business_info;
+        //    auto& mark = r.business_info.business_mark;
+        //    if (r.business_info.is_ad_video) {
+        //        // 推广视频
+        //        item->setCard(card.pic + ImageHelper::h_ext, info.title, card.owner.name, card.pubdate, card.stat.view,
+        //                      card.stat.danmaku, card.duration);
+        //        item->setExtraInfo(mark.img_url, (float)mark.img_width * 0.375f, (float)mark.img_height * 0.375f);
+        //    } else {
+        //        // 广告网页
+        //        item->setCard(info.pic + ImageHelper::h_ext, info.title, info.adver_name, "", "", "", mark.text);
+        //    }
+        //} else {
+            return item;
+        }
+            // 处理普通视频
             item->setCard(r.pic + ImageHelper::h_ext, r.title, r.owner.name, r.pubdate, r.stat.view, r.stat.danmaku,
                           r.duration, r.rcmd_reason.content);
-        }
-        
+        //}
         return item;
     }
 
@@ -52,11 +54,13 @@ public:
 
     void onItemSelected(RecyclingGrid* recycler, size_t index) override {
         if (recommendList[index].business_info.is_ad) {
-            if (recommendList[index].business_info.is_ad_video) {
-                Intent::openBV(recommendList[index].business_info.archive.bvid);
-            } else {
-                brls::Application::getPlatform()->openBrowser(recommendList[index].business_info.url);
-            }
+            //if (recommendList[index].business_info.is_ad_video) {
+            //    Intent::openBV(recommendList[index].business_info.archive.bvid);
+            //} else {
+            //    brls::Application::getPlatform()->openBrowser(recommendList[index].business_info.url);
+            //}
+            brls::Logger::debug("skipping ads"); //屏蔽打开广告
+            return;
         } else {
             Intent::openBV(recommendList[index].bvid);
         }
@@ -68,6 +72,11 @@ public:
         brls::Logger::debug("DataSourceRecommendVideoList: append data");
         bool skip = false;
         for (const auto& i : data) {
+            // 跳过广告 START
+            if (i.business_info.is_ad) {
+                continue;
+            }
+            // 跳过广告 END
             skip = false;
             for (const auto& j : this->recommendList) {
                 if (j.cid == i.cid) {
@@ -111,18 +120,23 @@ void HomeRecommends::onCreate() {
 }
 
 void HomeRecommends::onRecommendVideoList(const bilibili::RecommendVideoListResultWrapper& originalResult) {
-    // 过滤up主
+    // 过滤up主和广告
     bilibili::RecommendVideoListResultWrapper result;
     result.requestIndex = originalResult.requestIndex;
-    result.item.resize(originalResult.item.size());
-    if (ProgramConfig::instance().upFilter.empty()) {
-        std::copy(originalResult.item.begin(), originalResult.item.end(), result.item.begin());
-    } else {
-        auto it = std::copy_if(originalResult.item.begin(), originalResult.item.end(), result.item.begin(),
-                               [](const bilibili::RecommendVideoResult& r) {
-                                   return !ProgramConfig::instance().upFilter.count(r.owner.mid);
-                               });
-        result.item.resize(std::distance(result.item.begin(), it));
+    result.item.reserve(originalResult.item.size()); // 预分配空间
+
+    for (const auto& r : originalResult.item) {
+        // 跳过广告
+        if (r.business_info.is_ad) {
+            continue;
+        }
+
+        // 过滤up主
+        if (!ProgramConfig::instance().upFilter.empty() && ProgramConfig::instance().upFilter.count(r.owner.mid)) {
+            continue;
+        }
+
+        result.item.push_back(r);
     }
 
     brls::Threading::sync([this, result]() {
