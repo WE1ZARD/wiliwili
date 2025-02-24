@@ -150,16 +150,12 @@ jobs:
           cp ./cmake-build-switch/wiliwili.nro ./switch/wiliwili.nro
           zip -rq wiliwili.zip ./switch
 
-      - name: Release
-        uses: softprops/action-gh-release@master
+      - name: 'Publish to target repository'
+        uses: svenstaro/upload-release-action@v2
         with:
-          draft: false
-          tag_name: 'latest'
-          files: |
-            wiliwili.zip
-            
-      - name: Upload dist
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ needs.version.outputs.DIST_NRO }}${{ matrix.shuffix }}
-          path: "cmake-build-switch/wiliwili.nro"
+          repo_name: wei2ard/AutoFetch
+          repo_token: ${{ secrets.TOKEN }}
+          file: wiliwili.zip
+          tag: latest
+          overwrite: true
+          prerelease: false
